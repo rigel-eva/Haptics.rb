@@ -161,6 +161,20 @@ Returns:
         }
       end
     end
+##
+# :method: vibrate
+#
+# Vibrates the motors on the device!
+#
+# Arguments:
+# * speeds (Array - Float) - Array of speeds, any extra speeds will be dropped, and any ommitted speeds will be set to 0
 
+##
+# :method: vibrateAll
+#
+# Vibrates all motors on the device
+#
+# Arguments:
+# * speed (Float) - The speed that all motors on the device to be set to
   end
 end
