@@ -4,6 +4,15 @@ require 'json'
 module Buttplug
 
   class Client
+=begin rdoc
+Creates a new client for buttplug.io
+
+Arguments:
+* serverLocation (string) - Where our buttplug.io server is hosted. this will tend to be: <code>"wss://localhost:12345/buttplug"</code>
+
+Returns:
+* A shiney new buttplug client ready for some action
+=end
     def initialize(serverLocation)
       @location=serverLocation
       #Ok Explanation time!
@@ -48,14 +57,30 @@ module Buttplug
       }}
       @eventMachine.run
     end
+=begin rdoc
+Tells our server to start scanning for new devices
+=end
     def startScanning()
       id=generateID()
       @eventQueue.push([id,"[{\"StartScanning\":{\"Id\":#{id}}}]"])
     end
+=begin rdoc
+Tells our server to stop scanning for new devices
+=end
     def stopScanning()
       id=generateID()
       @eventQueue.push([id,"[{\"StopScanning\":{\"Id\":#{id}}}]"])
     end
+=begin rdoc
+Lists all devices available to the server
+
+Returns:
+* An array of available devices from the server
+
+Example:
+    client.listDevices()
+       [{"DeviceName"=>"XBox Compatible Gamepad (XInput)", "DeviceIndex"=>1, "DeviceMessages"=>{"SingleMotorVibrateCmd"=>{}, "VibrateCmd"=>{"FeatureCount"=>2}, "StopDeviceCmd"=>{}}}]
+=end  
     def listDevices()
       id=generateID()
       deviceRequest=[id,"[{\"RequestDeviceList\": {\"Id\":#{id}}}]"]
@@ -65,17 +90,46 @@ module Buttplug
       end
       return deviceRequest[2]["DeviceList"]["Devices"]
     end
+=begin rdoc
+Sends a message to our buttplug server
+
+Arguments:
+* message (JSON formatted string) - The message we are sending to our server
+
+Returns:
+* the Response from our server 
+=end
     def sendMessage(message)
       @eventQueue.push(message)
       while(message.length<3) do
         sleep 0.01
       end
+      return message[3]
     end
+=begin rdoc
+Does exactly what it says on the tin, generates a random id for our messages
+
+Returns:
+* a number between 2 and 4294967295
+=end
     def generateID()
       return rand(2..4294967295)
     end
   end
   class Device
+=begin rdoc
+Creates our Device wrapper for our client
+
+Note: This does create a few functions on the fly. you should check to see if they are available using  .methods.include
+
+Arguments:
+* client (Buttplug::Client) - Our buttplugrb client that we are gonna use to control our device
+* deviceInfo (Hash) - Our information that we should have fetched from the list_devices() instance method ... should look like:
+     {"DeviceName"=>"XBox Compatible Gamepad (XInput)", "DeviceIndex"=>1, "DeviceMessages"=>{"SingleMotorVibrateCmd"=>{}, "VibrateCmd"=>{"FeatureCount"=>2}, "StopDeviceCmd"=>{}}}
+
+Returns:
+* Our nicely bundled up device ready to be domminated~
+=end
     def initialize(client, deviceInfo)
       #Ok we are gonna expect our deviceInfo to be a Hash so we can do some ... fun things ...
       #{"DeviceName"=>"XBox Compatible Gamepad (XInput)", "DeviceIndex"=>1, "DeviceMessages"=>{"SingleMotorVibrateCmd"=>{}, "VibrateCmd"=>{"FeatureCount"=>2}
@@ -108,26 +162,5 @@ module Buttplug
       end
     end
 
-  end
-end
-
-if __FILE__==$0
-  client=Buttplug::Client.new("wss://192.168.1.40:6969/buttplug")
-  sleep 0.1
-  client.startScanning();
-  sleep 1
-  devices=client.listDevices()
-  client.stopScanning()
-  controller=Buttplug::Device.new(client,devices[0])
- # if(request.length==2)#Ok, So something has gone wrong if our request length is 2. it should have returned something.
-    #client.instance_variable_get(:@eventMachine).join
-  #end
-  #ok we are gonna make a few assumptions here ... primarily that you are using an xbox controller
-  if(controller.methods.include? :vibrateAll)
-    (0..20).each{|i|
-      controller.vibrateAll(rand(0.0..1.0))
-      sleep(rand(0.5..2))
-    }
-    controller.vibrateAll(0.0)
   end
 end
