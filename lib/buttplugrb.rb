@@ -171,12 +171,32 @@ Returns:
         }
       end
       if(deviceInfo["DeviceMessages"].keys.include? "LinearCmd")
-      #TODO: Do some stuff here with the LinearCmd
-      #To implement: https://metafetish.github.io/buttplug/generic.html#linearcmd
+        @linearActuators=deviceInfo["DeviceMessages"]["LinearCmd"]["FeatureCount"]
+        define_singleton_method(:stroke){|vectors|
+          id=client.generateID()
+          cmd=[{"LinearCmd"=>{"Id"=>id,"DeviceIndex"=>@deviceIndex,"Vectors"=>[]}}]
+          (0..@linearActuators-1).each{|i|
+            if vectors[i].nil?
+              vectors[i]["Duration"]=0
+              vectors[i]["Position"]=0
+            end
+            vectors[i]["Index"]=i
+            cmd[0]["LinearCmd"]["Vectors"]<<vectors[i]
+          }
+          client.sendMessage([id,cmd.to_json])
+        }
+        define_singleton_method(:strokeAll){|vector|
+          vectors=[]
+          (0..@linearActuators-1).each{|i|
+            vectors<<vector
+          }
+          stroke(vector)
+        }
       end
       if(deviceInfo["DeviceMessages"].keys.include? "RotateCmd")
       #TODO: Do some stuff here with RotateCmd
       #To implement: https://metafetish.github.io/buttplug/generic.html#rotatecmd
+      define_singleton_method(:rotate)
       end
       if(deviceInfo["DeviceMessages"].keys.include? "RawCmd")
       #TODO: Do some stuff here with RawCmd? ... Honestly I don't know what devices would support this ... possibly estim but at the moment 🤷 I have no idea. 🤷 
@@ -194,17 +214,59 @@ Stops the Device from any current actions that it might be taking.
 ##
 # :method: vibrate
 #
-# Vibrates the motors on the device!
+# Vibrates the motors on the device! (⁄ ⁄•⁄ω⁄•⁄ ⁄)
 #
 # Arguments:
 # * speeds (Array - Float) - Array of speeds, any extra speeds will be dropped, and any ommitted speeds will be set to 0
+#
+# example:
+#       device.vibrate([0.2,0.3,1,])
 
 ##
 # :method: vibrateAll
 #
-# Vibrates all motors on the device
+# Vibrates all motors on the device (⁄ ⁄>⁄ ▽ ⁄<⁄ ⁄)
 #
 # Arguments:
 # * speed (Float) - The speed that all motors on the device to be set to
+#
+# example:
+#       device.vibrateAll(0.2)
+
+##
+# :method: stroke
+# Sends a command to well ... Actuate the linear motors of the device („ಡωಡ„)
+#
+# Arguments:
+# * vectors (Array - Hash) - Array of Vectors, any extra will be dropped, and any ommited will be set to a duration of 0 and a posision of 0.0.
+#
+# example:
+#       device.stroke([{"Duration"=>300, "Position"=>0.2},{"Duration"=>1000, "Position"=>0.8}])
+
+##
+# :method: strokeAll
+#
+# Sends a command to all linear actuators to respond to a vector (ง ื▿ ื)ว
+#
+# Arguments:
+# * vector (Hash) - A single vector. 
+# 
+# example: 
+#       device.strokeAll({"Duration"=>300, "Position"=>0.2})
+    protected
+    def GenerateArrayedHashCommand(blankHash, featureCount, controlName, cmdName){ #AKA I have a feeling that if we get a dedicated function for estim boxes I feel like I'd have to rewrite this code again... so let's dry it the fuck up!
+      define_singleton_method(cmdName){|hash|
+        id=client.generateID()
+        cmd=[{"cmdName"=>{"Id"=>id,"DeviceIndex"=>@deviceIndex,controlName=>[]}}]
+        (0..@linearActuators-1).each{|i|
+          if vectors[i].nil?
+            hash[i]=blankHash
+          end
+        vectors[i]["Index"]=i
+        cmd[0]["LinearCmd"]["Vectors"]<<vectors[i]
+        }
+        client.sendMessage([id,cmd.to_json])
+      }
+    }
   end
 end
