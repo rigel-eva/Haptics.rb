@@ -22,6 +22,13 @@ Returns:
       @eventMachine=Thread.new{EM.run{
         eventQueue=@eventQueue 
         messageWatch={}
+        tickLoop=EM.tick_loop do #Should improve response times~
+          eventQueue.pop{|msg|
+            ws.send msg[1]
+            messageWatch[msg[0]]=msg
+            p [Time.now, :message_send, msg[1]] 
+          }
+        end
         ws = Faye::WebSocket::Client.new(@location)
         ws.on :open do |event|
           p [Time.now, :open]
@@ -48,11 +55,6 @@ Returns:
         end
         EM.add_periodic_timer(0.5){
           ws.send "[{\"Ping\": {\"Id\": #{generateID()}}}]"
-          eventQueue.pop{|msg|
-            ws.send msg[1]
-            messageWatch[msg[0]]=msg
-            p [Time.now, :message_send, msg[1]] 
-          }
         }
       }}
       @eventMachine.run

@@ -9,11 +9,13 @@ Gem::Specification.new do |s|
     s.add_runtime_dependency "json",[">=2.0.2"]
     s.authors = ["Nora Maguire"]
     s.email = "eva@rigel.moe"
-    s.require_paths = ["lib"]
+    s.require_paths = ["lib", "bin", "examples"]
     s.files = ["CODE_OF_CONDUCT.md",
+                "README.md",
                 "Rakefile",
                 "lib/buttplugrb.rb",
-                "lib/buttplugrb/VERSION"]
+                "lib/buttplugrb/VERSION",
+                "examples/Vibrate.rb"]
     s.homepage = "http://rubygems.org/gems/#{s.name}"
     s.license = "MIT"
 end
