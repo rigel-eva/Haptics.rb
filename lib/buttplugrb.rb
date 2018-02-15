@@ -93,6 +93,14 @@ Example:
       return deviceRequest[2]["DeviceList"]["Devices"]
     end
 =begin rdoc
+Stops all devices currently controlled by the server
+=end
+    def stopAllDevices()
+      id=generateID()
+      deviceRequest=[id,"[{\"StopAllDevices\": {\"ID\":#{id}}}]"]
+      @eventQueue.push(deviceRequest)
+    end
+=begin rdoc
 Sends a message to our buttplug server
 
 Arguments:
@@ -162,6 +170,26 @@ Returns:
           vibrate(speeds)
         }
       end
+      if(deviceInfo["DeviceMessages"].keys.include? "LinearCmd")
+      #TODO: Do some stuff here with the LinearCmd
+      #To implement: https://metafetish.github.io/buttplug/generic.html#linearcmd
+      end
+      if(deviceInfo["DeviceMessages"].keys.include? "RotateCmd")
+      #TODO: Do some stuff here with RotateCmd
+      #To implement: https://metafetish.github.io/buttplug/generic.html#rotatecmd
+      end
+      if(deviceInfo["DeviceMessages"].keys.include? "RawCmd")
+      #TODO: Do some stuff here with RawCmd? ... Honestly I don't know what devices would support this ... possibly estim but at the moment 🤷 I have no idea. 🤷 
+      #To implement: https://metafetish.github.io/buttplug/generic.html#rawcmd
+      end
+    end
+=begin rdoc
+Stops the Device from any current actions that it might be taking. 
+=end
+    def stopDevice
+      id=client.generateID()
+      cmd="[{\"StopDeviceCmd\": {\"ID\":#{id},\"DeviceIndex\":#{@deviceIndex}}}]"
+      client.sendMessage([id,cmd])
     end
 ##
 # :method: vibrate
