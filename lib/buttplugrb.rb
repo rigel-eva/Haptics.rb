@@ -1,8 +1,13 @@
 require 'faye/websocket'
 require 'eventmachine'
 require 'json'
+=begin rdoc
+Our Module for containg the functions and classes relating to the Buttplugrb gem
+=end
 module Buttplug
-
+=begin rdoc
+Our Client for a buttplug.io server
+=end
   class Client
 =begin rdoc
 Creates a new client for buttplug.io
@@ -126,6 +131,9 @@ Returns:
       return rand(2..4294967295)
     end
   end
+=begin rdoc
+This class creates a Wrapper for your various devices you fetched from listDevices for your controlling pleasure!
+=end
   class Device
 =begin rdoc
 Creates our Device wrapper for our client
@@ -162,41 +170,17 @@ Returns:
           }
           client.sendMessage([id,cmd.to_json])
         }
-        define_singleton_method(:vibrateAll){|speed|
-          speeds=[]
-          (0..@vibeMotors-1).each{|i|
-            speeds<<speed
-          }
-          vibrate(speeds)
-        }
+        generateActivateAllCommand(:vibrate,@vibeMotors,:vibrateAll)
       end
       if(deviceInfo["DeviceMessages"].keys.include? "LinearCmd")
         @linearActuators=deviceInfo["DeviceMessages"]["LinearCmd"]["FeatureCount"]
-        define_singleton_method(:stroke){|vectors|
-          id=client.generateID()
-          cmd=[{"LinearCmd"=>{"Id"=>id,"DeviceIndex"=>@deviceIndex,"Vectors"=>[]}}]
-          (0..@linearActuators-1).each{|i|
-            if vectors[i].nil?
-              vectors[i]["Duration"]=0
-              vectors[i]["Position"]=0
-            end
-            vectors[i]["Index"]=i
-            cmd[0]["LinearCmd"]["Vectors"]<<vectors[i]
-          }
-          client.sendMessage([id,cmd.to_json])
-        }
-        define_singleton_method(:strokeAll){|vector|
-          vectors=[]
-          (0..@linearActuators-1).each{|i|
-            vectors<<vector
-          }
-          stroke(vector)
-        }
+        generateArrayedHashCommand({"Duration"=>0, "Position"=>0.0},@linearActuators,"LinearCmd","Vectors",:stroke)
+        generateActivateAllCommand(:stroke,@linearActuators,:strokeAll)
       end
       if(deviceInfo["DeviceMessages"].keys.include? "RotateCmd")
-      #TODO: Do some stuff here with RotateCmd
-      #To implement: https://metafetish.github.io/buttplug/generic.html#rotatecmd
-      define_singleton_method(:rotate)
+        @rotationMotors=deviceInfo["DeviceMessages"]["RotateCmd"]["FeatureCount"]
+        generateArrayedHashCommand({"Speed"=>0.0,"Clockwise"=>true},@rotationMotors,"RotateCmd","Rotations",:rotate)
+        generateActivateAllCommand(:rotate,@rotationMotors,:rotateAll)
       end
       if(deviceInfo["DeviceMessages"].keys.include? "RawCmd")
       #TODO: Do some stuff here with RawCmd? ... Honestly I don't know what devices would support this ... possibly estim but at the moment 🤷 I have no idea. 🤷 
@@ -220,7 +204,7 @@ Stops the Device from any current actions that it might be taking.
 # * speeds (Array - Float) - Array of speeds, any extra speeds will be dropped, and any ommitted speeds will be set to 0
 #
 # example:
-#       device.vibrate([0.2,0.3,1,])
+#       device.vibrate([0.2,0.3,1])
 
 ##
 # :method: vibrateAll
@@ -253,8 +237,44 @@ Stops the Device from any current actions that it might be taking.
 # 
 # example: 
 #       device.strokeAll({"Duration"=>300, "Position"=>0.2})
+
+##
+# :method: rotate
+# Spins whatever feature rotates right round ... baby right round~ (ノ*°▽°*)
+#
+# Arguments:
+# * rotations (Array - Hash) - Array of Vectors, any extra will be dropped, and any ommited will be set to a duration of 0 and a posision of 0.0.
+#
+# example:
+#       device.rotate([{"Speed"=>0.5,"Clockwise"=>true},{"Speed=>1, "Clockwise"=>false}])
+
+##
+# :method: rotateAll
+# Spins All the features Right round like a record, baby Right round round round (*ﾉωﾉ)
+#
+# Arguments:
+# * rotation (Hash) - Our single rotation we are sending to all the features
+#
+# example:
+#       device.rotateAll({"Speed"=>0.5,"Clockwise"=>true})
+
+##
+#
     protected
-    def GenerateArrayedHashCommand(blankHash, featureCount, controlName, cmdName){ #AKA I have a feeling that if we get a dedicated function for estim boxes I feel like I'd have to rewrite this code again... so let's dry it the fuck up!
+=begin rdoc
+Helper Function to generate Metaprogrammed Methods for various buttplug stuff
+
+Arguments:
+* blankHash (Hash) - An example of a Nilled out hash so the newly minted function knows what 0 looks like
+* featureCount (Int) - How many features are we talking about here? I've heard rumors of a dildo with 10 vibrators~ 
+* controlName (String) - And what command are we exactly sending to our server? 
+# arrayName (String) - What Buttplug.io is expecting the array to be called
+* cmdName (Method) - Annnnd what are we gonna call our newly minted method?
+
+example:
+     generateArrayedHashCommand({"Speed"=>0.0,"Clockwise"=>true},@rotationMotors,"RotateCmd",:rotate)  
+=end
+    def generateArrayedHashCommand(blankHash, featureCount, controlName, arrayName ,cmdName) #AKA I have a feeling that if we get a dedicated function for estim boxes I feel like I'd have to rewrite this code again... so let's dry it the fuck up!
       define_singleton_method(cmdName){|hash|
         id=client.generateID()
         cmd=[{"cmdName"=>{"Id"=>id,"DeviceIndex"=>@deviceIndex,controlName=>[]}}]
@@ -262,11 +282,28 @@ Stops the Device from any current actions that it might be taking.
           if vectors[i].nil?
             hash[i]=blankHash
           end
-        vectors[i]["Index"]=i
-        cmd[0]["LinearCmd"]["Vectors"]<<vectors[i]
+          vectors[i]["Index"]=i
+        cmd[0]["LinearCmd"][arrayName]<<vectors[i]
         }
         client.sendMessage([id,cmd.to_json])
       }
-    }
+    end
+=begin rdoc
+Helper Function to generate Metaprogrammed methods to set all instances of a feature to the same value
+
+Arguments:
+* cmdToAll (Method) - The command we are gonna call when we want to send our DO ALL THE THINGS signal
+* featureCount (Int) - How many features are we controlling?
+* cmdName (Method) - Annnnd what are we gonna call our newly minted command?
+=end
+    def generateActivateAllCommand(cmdToAll, featureCount, cmdName)
+      define_singleton_method(cmdName){|var|
+        vars=[]
+        (0..featureCount-1).each{|i|
+          vars<<var
+        }
+        self.public_send(cmdToAll, vars)
+      }
+    end
   end
 end
