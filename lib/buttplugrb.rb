@@ -1,6 +1,7 @@
 require 'faye/websocket'
 require 'eventmachine'
 require 'json'
+
 =begin rdoc
 Our Module for containg the functions and classes relating to the Buttplugrb gem
 =end
@@ -22,11 +23,11 @@ Returns:
       @location=serverLocation
       #Ok Explanation time!
       # * @EventQueue - The events we are triggering on the server, Expected to be an array, with the first element being the message Id, and the second being the message itself!
-      # * @responseQueue - And our messages back from the server! Will be an array with the 
       @eventQueue=EM::Queue.new
       @eventMachine=Thread.new{EM.run{
         eventQueue=@eventQueue 
         messageWatch={}
+        ws = Faye::WebSocket::Client.new(@location)
         tickLoop=EM.tick_loop do #Should improve response times~
           eventQueue.pop{|msg|
             ws.send msg[1]
@@ -34,7 +35,6 @@ Returns:
             p [Time.now, :message_send, msg[1]] 
           }
         end
-        ws = Faye::WebSocket::Client.new(@location)
         ws.on :open do |event|
           p [Time.now, :open]
           ws.send '[{"RequestServerInfo": {"Id": 1, "ClientName": "roboMegumin", "MessageVersion": 1}}]'
@@ -155,6 +155,7 @@ Returns:
       @deviceIndex=deviceInfo["DeviceIndex"]
       @client=client
       #Ok so we are starting our weird metaProgramming BS here
+
       if(deviceInfo["DeviceMessages"].keys.include? "VibrateCmd")
         @vibeMotors=deviceInfo["DeviceMessages"]["VibrateCmd"]["FeatureCount"]
         define_singleton_method(:vibrate){|speeds|
@@ -191,9 +192,9 @@ Returns:
 Stops the Device from any current actions that it might be taking. 
 =end
     def stopDevice
-      id=client.generateID()
+      id=@client.generateID()
       cmd="[{\"StopDeviceCmd\": {\"ID\":#{id},\"DeviceIndex\":#{@deviceIndex}}}]"
-      client.sendMessage([id,cmd])
+      @client.sendMessage([id,cmd])
     end
 ##
 # :method: vibrate
@@ -276,16 +277,16 @@ example:
 =end
     def generateArrayedHashCommand(blankHash, featureCount, controlName, arrayName ,cmdName) #AKA I have a feeling that if we get a dedicated function for estim boxes I feel like I'd have to rewrite this code again... so let's dry it the fuck up!
       define_singleton_method(cmdName){|hash|
-        id=client.generateID()
-        cmd=[{"cmdName"=>{"Id"=>id,"DeviceIndex"=>@deviceIndex,controlName=>[]}}]
-        (0..@linearActuators-1).each{|i|
-          if vectors[i].nil?
+        id=@client.generateID()
+        cmd=[{controlName=>{"Id"=>id,"DeviceIndex"=>@deviceIndex,arrayName=>[]}}]
+        (0..featureCount-1).each{|i|
+          if hash[i].nil?
             hash[i]=blankHash
           end
-          vectors[i]["Index"]=i
-        cmd[0]["LinearCmd"][arrayName]<<vectors[i]
+          hash[i]["Index"]=i
+          cmd[0][controlName][arrayName]<<hash[i]
         }
-        client.sendMessage([id,cmd.to_json])
+        @client.sendMessage([id,cmd.to_json])
       }
     end
 =begin rdoc
@@ -307,3 +308,5 @@ Arguments:
     end
   end
 end
+#And loading in any other things that might help (including debug ...)
+Dir["#{File.dirname(__FILE__)}/buttplugrb/*.rb"].each {|file| require file }
