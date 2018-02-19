@@ -19,7 +19,8 @@ Arguments:
 Returns:
 * A shiney new buttplug client ready for some action
 =end
-    def initialize(serverLocation)
+    def initialize(serverLocation, clientName="buttplugrb")
+      @messageID=1
       @location=serverLocation
       #Ok Explanation time!
       # * @EventQueue - The events we are triggering on the server, Expected to be an array, with the first element being the message Id, and the second being the message itself!
@@ -37,7 +38,8 @@ Returns:
         end
         ws.on :open do |event|
           p [Time.now, :open]
-          ws.send '[{"RequestServerInfo": {"Id": 1, "ClientName": "roboMegumin", "MessageVersion": 1}}]'
+          ws.send "[{\"RequestServerInfo\": {\"Id\": 1, \"ClientName\": \"#{clientName}\", \"MessageVersion\": 1}}]"
+          #TODO: Add MaxPingTime Code
         end
         ws.on :message do |event|
           message=JSON::parse(event.data)[0]
@@ -57,10 +59,17 @@ Returns:
         ws.on :close do |event|
           p [Time.now, :close, event.code, event.reason]
           ws = nil
+          #TODO: Add Nil checks for Sends, and Nil out the ping when closed
         end
         EM.add_periodic_timer(0.5){
           ws.send "[{\"Ping\": {\"Id\": #{generateID()}}}]"
         }
+        #TODO: Add Error code https://metafetish.github.io/buttplug/status.html#error
+        #TODO: Add Log code https://metafetish.github.io/buttplug/status.html#requestlog
+        #TODO: Add ScanningFinished code https://metafetish.github.io/buttplug/enumeration.html#scanningfinished
+        #TODO: Add DeviceAdded code https://metafetish.github.io/buttplug/enumeration.html#deviceadded
+        #TODO: Add DeviceRemoved code https://metafetish.github.io/buttplug/enumeration.html#deviceremoved
+
       }}
       @eventMachine.run
     end
@@ -70,6 +79,7 @@ Tells our server to start scanning for new devices
     def startScanning()
       id=generateID()
       @eventQueue.push([id,"[{\"StartScanning\":{\"Id\":#{id}}}]"])
+      #TODO: Add wait for OK
     end
 =begin rdoc
 Tells our server to stop scanning for new devices
@@ -128,7 +138,8 @@ Returns:
 * a number between 2 and 4294967295
 =end
     def generateID()
-      return rand(2..4294967295)
+      @messageID+=1
+      return @messageID
     end
   end
 =begin rdoc
