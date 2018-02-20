@@ -192,12 +192,10 @@ Returns:
           #So, I should probably add some basic error handling to most of the code then ... 
         #TODO: Add Log code https://metafetish.github.io/buttplug/status.html#requestlog 
           #Done, I think ... please correct me if I'm wrong
-        #TODO: Add DeviceAdded code https://metafetish.github.io/buttplug/enumeration.html#deviceadded
-        #TODO: Add DeviceRemoved code https://metafetish.github.io/buttplug/enumeration.html#deviceremoved
-          #Ok I don't really know how I'm gonna implement the former 2
-
       }}
     end
+    #TODO: Add Method to disconnect from current Server
+    #TODO: Add Method for reconnecting to a Server
   end
 =begin rdoc
 This class creates a Wrapper for your various devices you fetched from listDevices for your controlling pleasure!
