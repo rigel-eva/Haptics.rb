@@ -39,65 +39,7 @@ Returns:
       @eventQueue=EM::Queue.new
       @logLevel=Buttplug::LogLevel::Off
       @scanning=false
-      @eventMachine=Thread.new{EM.run{
-        eventQueue=@eventQueue
-        messageWatch={}
-        logLevel=@logLevel
-        scanning=@scanning
-        ws = Faye::WebSocket::Client.new(@location)
-        tickLoop=EM.tick_loop do #Should improve response times~
-          eventQueue.pop{|msg|
-            ws.send msg[1]
-            messageWatch[msg[0]]=msg
-            p [Time.now, :message_send, msg[1]] 
-          }
-        end
-        ws.on :open do |event|
-          p [Time.now, :open]
-          ws.send "[{\"RequestServerInfo\": {\"Id\": 1, \"ClientName\": \"#{clientName}\", \"MessageVersion\": 1}}]"
-          #TODO: Add MaxPingTime Code
-        end
-        ws.on :message do |event|
-          #Ok, first of all let's grab 
-          message=JSON::parse(event.data).each{|event|
-            message.each{|key,value|
-              #We don't really care about the key just yet ... We are going to just care about finding our ID
-              if(messageWatch.keys.include?(value["Id"]))
-                messageWatch[value["Id"]]<<{key => value}#And now we care about our key!
-                puts messageWatch[value["Id"]].object_id
-                messageWatch.delete(value["Id"])
-                p [Time.now, :message_recieved, [{key => value}]]
-                next
-              #If we need to log
-              elsif(scanning&&key="ScanningFinished")
-                p [Time.now,:ScanningFinished]
-                scanning=false
-              elsif(logLevel>Buttplug::LogLevel::Off&&key=="Log")
-                p [Time.now,:ServerLog,value]
-              elsif(key=="ServerInfo")
-                p [Time.now, :server_info, value]
-              end
-            }
-          }
-
-        end
-        ws.on :close do |event|
-          p [Time.now, :close, event.code, event.reason]
-          ws = nil
-          #TODO: Add Nil checks for Sends, and Nil out the ping when closed
-        end
-        EM.add_periodic_timer(0.5){
-          ws.send "[{\"Ping\": {\"Id\": #{generateID()}}}]"
-        }
-        #TODO: Add Error code https://metafetish.github.io/buttplug/status.html#error
-          #So, I should probably add some basic error handling to most of the code then ... 
-        #TODO: Add Log code https://metafetish.github.io/buttplug/status.html#requestlog 
-          #Done, I think ... please correct me if I'm wrong
-        #TODO: Add DeviceAdded code https://metafetish.github.io/buttplug/enumeration.html#deviceadded
-        #TODO: Add DeviceRemoved code https://metafetish.github.io/buttplug/enumeration.html#deviceremoved
-          #Ok I don't really know how I'm gonna implement the former 2
-
-      }}
+      startEventMachine()
       @eventMachine.run
     end
     def setLogLevel(logLevel)
@@ -175,6 +117,68 @@ Returns:
     def generateID()
       @messageID+=1
       return @messageID
+    end
+    protected 
+    def startEventMachine()
+      @eventMachine=Thread.new{EM.run{
+        eventQueue=@eventQueue
+        messageWatch={}
+        logLevel=@logLevel
+        scanning=@scanning
+        ws = Faye::WebSocket::Client.new(@location)
+        tickLoop=EM.tick_loop do #Should improve response times~
+          eventQueue.pop{|msg|
+            ws.send msg[1]
+            messageWatch[msg[0]]=msg
+            p [Time.now, :message_send, msg[1]] 
+          }
+        end
+        ws.on :open do |event|
+          p [Time.now, :open]
+          ws.send "[{\"RequestServerInfo\": {\"Id\": 1, \"ClientName\": \"#{clientName}\", \"MessageVersion\": 1}}]"
+          #TODO: Add MaxPingTime Code
+        end
+        ws.on :message do |event|
+          #Ok, first of all let's grab 
+          message=JSON::parse(event.data).each{|event|
+            message.each{|key,value|
+              #We don't really care about the key just yet ... We are going to just care about finding our ID
+              if(messageWatch.keys.include?(value["Id"]))
+                messageWatch[value["Id"]]<<{key => value}#And now we care about our key!
+                puts messageWatch[value["Id"]].object_id
+                messageWatch.delete(value["Id"])
+                p [Time.now, :message_recieved, [{key => value}]]
+                next
+              #If we need to log
+              elsif(scanning&&key=="ScanningFinished")
+                p [Time.now,:ScanningFinished]
+                scanning=false
+              elsif(logLevel>Buttplug::LogLevel::Off&&key=="Log")
+                p [Time.now,:ServerLog,value]
+              elsif(key=="ServerInfo")
+                p [Time.now, :server_info, value]
+              end
+            }
+          }
+
+        end
+        ws.on :close do |event|
+          p [Time.now, :close, event.code, event.reason]
+          ws = nil
+          #TODO: Add Nil checks for Sends, and Nil out the ping when closed
+        end
+        EM.add_periodic_timer(0.5){
+          ws.send "[{\"Ping\": {\"Id\": #{generateID()}}}]"
+        }
+        #TODO: Add Error code https://metafetish.github.io/buttplug/status.html#error
+          #So, I should probably add some basic error handling to most of the code then ... 
+        #TODO: Add Log code https://metafetish.github.io/buttplug/status.html#requestlog 
+          #Done, I think ... please correct me if I'm wrong
+        #TODO: Add DeviceAdded code https://metafetish.github.io/buttplug/enumeration.html#deviceadded
+        #TODO: Add DeviceRemoved code https://metafetish.github.io/buttplug/enumeration.html#deviceremoved
+          #Ok I don't really know how I'm gonna implement the former 2
+
+      }}
     end
   end
 =begin rdoc
