@@ -39,6 +39,7 @@ Returns:
       @eventQueue=EM::Queue.new
       @logLevel=Buttplug::LogLevel::Off
       @scanning=false
+      @currentDevices=[];
       startEventMachine()
       @eventMachine.run
     end
@@ -119,7 +120,7 @@ Returns:
       return @messageID
     end
     def currentDevices()
-      #TODO: Add code here to show all the various devices we have without having to refetch
+      return @currentDevices
     end
     def deviceSusbscribe(id,&code)
       #TODO: Add Code here to allow a class like Buttplug::Device to subscribe to events, annnnd realize that the device has disconnected when that does happen (like the hush has a tendeancy to do ... )
@@ -131,6 +132,7 @@ Returns:
         messageWatch={}
         logLevel=@logLevel
         scanning=@scanning
+        currentDevices=@currentDevices
         ws = Faye::WebSocket::Client.new(@location)
         tickLoop=EM.tick_loop do #Should improve response times~
           eventQueue.pop{|msg|
@@ -155,12 +157,22 @@ Returns:
                 messageWatch.delete(value["Id"])
                 p [Time.now, :message_recieved, [{key => value}]]
                 next
-              #If we need to log
+              #If we are currently scanning, we should Probably check and see if we recieved a ScanningFinished message
               elsif(scanning&&key=="ScanningFinished")
                 p [Time.now,:ScanningFinished]
                 scanning=false
+              #If we are logging, we should probably Check and see if this is a log ... 
               elsif(logLevel>Buttplug::LogLevel::Off&&key=="Log")
                 p [Time.now,:ServerLog,value]
+              #and last but not least if we spot our server info we should probably log it ...
+              elsif(key=="DeviceAdded")
+                #Oh? Sweet let's go ahead and add it's information to our array!
+                currentDevices.push {"DeviceName"=>value["DeviceName"],"DeviceIndex"=>value["DeviceIndex"],"DeviceMessages"=>value["DeviceMessages"]}
+              elsif(key=="DeviceRemoved")
+                #well darn, and to just have compatability with the current js version of buttplug.io we are gonna do this a bit diffrently than I'd like ... we are totally not doing this because I'm feeling lazy and want to push out this itteration, no sir
+                currentDevices.reject!{|device|
+                  device["Id"]==value["Id"]
+                }
               elsif(key=="ServerInfo")
                 p [Time.now, :server_info, value]
               end
