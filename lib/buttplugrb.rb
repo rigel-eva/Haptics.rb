@@ -118,6 +118,12 @@ Returns:
       @messageID+=1
       return @messageID
     end
+    def currentDevices()
+      #TODO: Add code here to show all the various devices we have without having to refetch
+    end
+    def deviceSusbscribe(id,&code)
+      #TODO: Add Code here to allow a class like Buttplug::Device to subscribe to events, annnnd realize that the device has disconnected when that does happen (like the hush has a tendeancy to do ... )
+    end
     protected 
     def startEventMachine()
       @eventMachine=Thread.new{EM.run{
