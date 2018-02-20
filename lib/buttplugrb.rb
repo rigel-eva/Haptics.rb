@@ -7,6 +7,18 @@ Our Module for containg the functions and classes relating to the Buttplugrb gem
 =end
 module Buttplug
 =begin rdoc
+  The module holding all of our various log levels that our client can set our server to
+=end
+  module LogLevel
+    Off = 0
+    Fatal = 1
+    Error = 2
+    Warn = 3
+    Info = 4
+    Debug = 5
+    Trace = 6
+  end
+=begin rdoc
 Our Client for a buttplug.io server
 =end
   class Client
@@ -25,9 +37,11 @@ Returns:
       #Ok Explanation time!
       # * @EventQueue - The events we are triggering on the server, Expected to be an array, with the first element being the message Id, and the second being the message itself!
       @eventQueue=EM::Queue.new
+      @logLevel=Buttplug::LogLevel::Off
       @eventMachine=Thread.new{EM.run{
-        eventQueue=@eventQueue 
+        eventQueue=@eventQueue
         messageWatch={}
+        logLevel=@logLevel
         ws = Faye::WebSocket::Client.new(@location)
         tickLoop=EM.tick_loop do #Should improve response times~
           eventQueue.pop{|msg|
@@ -42,19 +56,25 @@ Returns:
           #TODO: Add MaxPingTime Code
         end
         ws.on :message do |event|
-          message=JSON::parse(event.data)[0]
-          message.each{|key,value|
-            #We don't really care about the key just yet ... We are going to just care about finding our ID
-            if(messageWatch.keys.include?(value["Id"]))
-              messageWatch[value["Id"]]<<{key => value}#And now we care about our key!
-              puts messageWatch[value["Id"]].object_id
-              messageWatch.delete(value["Id"])
-              p [Time.now, :message_recieved, [{key => value}]]
-              next
-            elsif(key=="ServerInfo")
-              p [Time.now, :server_info, value]
-            end
+          #Ok, first of all let's grab 
+          message=JSON::parse(event.data).each{|event|
+            message.each{|key,value|
+              #We don't really care about the key just yet ... We are going to just care about finding our ID
+              if(messageWatch.keys.include?(value["Id"]))
+                messageWatch[value["Id"]]<<{key => value}#And now we care about our key!
+                puts messageWatch[value["Id"]].object_id
+                messageWatch.delete(value["Id"])
+                p [Time.now, :message_recieved, [{key => value}]]
+                next
+              #If we need to log
+              elsif(logLevel>Buttplug::LogLevel::Off&&key=="Log")
+                p [Time.now,:ServerLog,value]
+              elsif(key=="ServerInfo")
+                p [Time.now, :server_info, value]
+              end
+            }
           }
+
         end
         ws.on :close do |event|
           p [Time.now, :close, event.code, event.reason]
@@ -65,13 +85,17 @@ Returns:
           ws.send "[{\"Ping\": {\"Id\": #{generateID()}}}]"
         }
         #TODO: Add Error code https://metafetish.github.io/buttplug/status.html#error
-        #TODO: Add Log code https://metafetish.github.io/buttplug/status.html#requestlog
+        #TODO: Add Log code https://metafetish.github.io/buttplug/status.html#requestlog 
+          #Done, I think ... please correct me if I'm wrong
         #TODO: Add ScanningFinished code https://metafetish.github.io/buttplug/enumeration.html#scanningfinished
         #TODO: Add DeviceAdded code https://metafetish.github.io/buttplug/enumeration.html#deviceadded
         #TODO: Add DeviceRemoved code https://metafetish.github.io/buttplug/enumeration.html#deviceremoved
 
       }}
       @eventMachine.run
+    end
+    def setLogLevel(logLevel)
+      @logLevel=logLevel
     end
 =begin rdoc
 Tells our server to start scanning for new devices

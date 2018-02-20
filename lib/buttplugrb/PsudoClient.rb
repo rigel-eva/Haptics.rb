@@ -9,6 +9,7 @@ This is a class to emulate a connection to a buttplug server for testing purpose
           @location=serverLocation
           @eventQueue=EM::Queue.new
           @log.level=Logger::DEBUG
+          @messageID=0
           @devices=[]
           @eventMachine=Thread.new{EM.run{
             log=@log
