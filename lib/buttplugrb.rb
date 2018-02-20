@@ -38,10 +38,12 @@ Returns:
       # * @EventQueue - The events we are triggering on the server, Expected to be an array, with the first element being the message Id, and the second being the message itself!
       @eventQueue=EM::Queue.new
       @logLevel=Buttplug::LogLevel::Off
+      @scanning=false
       @eventMachine=Thread.new{EM.run{
         eventQueue=@eventQueue
         messageWatch={}
         logLevel=@logLevel
+        scanning=@scanning
         ws = Faye::WebSocket::Client.new(@location)
         tickLoop=EM.tick_loop do #Should improve response times~
           eventQueue.pop{|msg|
@@ -67,6 +69,9 @@ Returns:
                 p [Time.now, :message_recieved, [{key => value}]]
                 next
               #If we need to log
+              elsif(scanning&&key="ScanningFinished")
+                p [Time.now,:ScanningFinished]
+                scanning=false
               elsif(logLevel>Buttplug::LogLevel::Off&&key=="Log")
                 p [Time.now,:ServerLog,value]
               elsif(key=="ServerInfo")
@@ -85,11 +90,12 @@ Returns:
           ws.send "[{\"Ping\": {\"Id\": #{generateID()}}}]"
         }
         #TODO: Add Error code https://metafetish.github.io/buttplug/status.html#error
+          #So, I should probably add some basic error handling to most of the code then ... 
         #TODO: Add Log code https://metafetish.github.io/buttplug/status.html#requestlog 
           #Done, I think ... please correct me if I'm wrong
-        #TODO: Add ScanningFinished code https://metafetish.github.io/buttplug/enumeration.html#scanningfinished
         #TODO: Add DeviceAdded code https://metafetish.github.io/buttplug/enumeration.html#deviceadded
         #TODO: Add DeviceRemoved code https://metafetish.github.io/buttplug/enumeration.html#deviceremoved
+          #Ok I don't really know how I'm gonna implement the former 2
 
       }}
       @eventMachine.run
@@ -102,8 +108,10 @@ Tells our server to start scanning for new devices
 =end
     def startScanning()
       id=generateID()
-      @eventQueue.push([id,"[{\"StartScanning\":{\"Id\":#{id}}}]"])
-      #TODO: Add wait for OK
+      response=sendMessage([id,"[{\"StartScanning\":{\"Id\":#{id}}}]"])
+      if(response[0].keys.include? "Error")
+        #TODO: Add Error Handling code
+      end
     end
 =begin rdoc
 Tells our server to stop scanning for new devices
@@ -111,6 +119,9 @@ Tells our server to stop scanning for new devices
     def stopScanning()
       id=generateID()
       @eventQueue.push([id,"[{\"StopScanning\":{\"Id\":#{id}}}]"])
+    end
+    def isScanning?()
+      return @scanning
     end
 =begin rdoc
 Lists all devices available to the server
