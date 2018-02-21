@@ -167,7 +167,8 @@ Returns:
               #and last but not least if we spot our server info we should probably log it ...
               elsif(key=="DeviceAdded")
                 #Oh? Sweet let's go ahead and add it's information to our array!
-                currentDevices.push {"DeviceName"=>value["DeviceName"],"DeviceIndex"=>value["DeviceIndex"],"DeviceMessages"=>value["DeviceMessages"]}
+                currentDevices.push(
+                  {"DeviceName" => value["DeviceName"], "DeviceIndex" => value["DeviceIndex"], "DeviceMessages" => value["DeviceMessages"]})
               elsif(key=="DeviceRemoved")
                 #well darn, and to just have compatability with the current js version of buttplug.io we are gonna do this a bit diffrently than I'd like ... we are totally not doing this because I'm feeling lazy and want to push out this itteration, no sir
                 currentDevices.reject!{|device|
@@ -178,7 +179,6 @@ Returns:
               end
             }
           }
-
         end
         ws.on :close do |event|
           p [Time.now, :close, event.code, event.reason]
