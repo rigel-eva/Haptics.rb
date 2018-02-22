@@ -1,0 +1,26 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build Development Version of Gem",
+            "type": "shell",
+            "command": "rake buildDevVersion",
+            "group":{
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label":"Fetch current Version of Gem hosted on rubygems.org",
+            "type": "shell",
+            "command": "rake getCurrentRelease"
+        },
+        {
+            "label":"Open irb with Gem Loaded",
+            "type": "shell",
+            "command": "rake console"
+        }
+    ]
+}

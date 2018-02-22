@@ -7,6 +7,18 @@ Our Module for containg the functions and classes relating to the Buttplugrb gem
 =end
 module Buttplug
 =begin rdoc
+  The module holding all of our various log levels that our client can set our server to
+=end
+  module LogLevel
+    Off = 0
+    Fatal = 1
+    Error = 2
+    Warn = 3
+    Info = 4
+    Debug = 5
+    Trace = 6
+  end
+=begin rdoc
 Our Client for a buttplug.io server
 =end
   class Client
@@ -19,57 +31,30 @@ Arguments:
 Returns:
 * A shiney new buttplug client ready for some action
 =end
-    def initialize(serverLocation)
+    def initialize(serverLocation, clientName="buttplugrb")
+      @messageID=1
       @location=serverLocation
       #Ok Explanation time!
       # * @EventQueue - The events we are triggering on the server, Expected to be an array, with the first element being the message Id, and the second being the message itself!
       @eventQueue=EM::Queue.new
-      @eventMachine=Thread.new{EM.run{
-        eventQueue=@eventQueue 
-        messageWatch={}
-        ws = Faye::WebSocket::Client.new(@location)
-        tickLoop=EM.tick_loop do #Should improve response times~
-          eventQueue.pop{|msg|
-            ws.send msg[1]
-            messageWatch[msg[0]]=msg
-            p [Time.now, :message_send, msg[1]] 
-          }
-        end
-        ws.on :open do |event|
-          p [Time.now, :open]
-          ws.send '[{"RequestServerInfo": {"Id": 1, "ClientName": "roboMegumin", "MessageVersion": 1}}]'
-        end
-        ws.on :message do |event|
-          message=JSON::parse(event.data)[0]
-          message.each{|key,value|
-            #We don't really care about the key just yet ... We are going to just care about finding our ID
-            if(messageWatch.keys.include?(value["Id"]))
-              messageWatch[value["Id"]]<<{key => value}#And now we care about our key!
-              puts messageWatch[value["Id"]].object_id
-              messageWatch.delete(value["Id"])
-              p [Time.now, :message_recieved, [{key => value}]]
-              next
-            elsif(key=="ServerInfo")
-              p [Time.now, :server_info, value]
-            end
-          }
-        end
-        ws.on :close do |event|
-          p [Time.now, :close, event.code, event.reason]
-          ws = nil
-        end
-        EM.add_periodic_timer(0.5){
-          ws.send "[{\"Ping\": {\"Id\": #{generateID()}}}]"
-        }
-      }}
+      @logLevel=Buttplug::LogLevel::Off
+      @scanning=false
+      @currentDevices=[];
+      startEventMachine()
       @eventMachine.run
+    end
+    def setLogLevel(logLevel)
+      @logLevel=logLevel
     end
 =begin rdoc
 Tells our server to start scanning for new devices
 =end
     def startScanning()
       id=generateID()
-      @eventQueue.push([id,"[{\"StartScanning\":{\"Id\":#{id}}}]"])
+      response=sendMessage([id,"[{\"StartScanning\":{\"Id\":#{id}}}]"])
+      if(response[0].keys.include? "Error")
+        #TODO: Add Error Handling code
+      end
     end
 =begin rdoc
 Tells our server to stop scanning for new devices
@@ -77,6 +62,9 @@ Tells our server to stop scanning for new devices
     def stopScanning()
       id=generateID()
       @eventQueue.push([id,"[{\"StopScanning\":{\"Id\":#{id}}}]"])
+    end
+    def isScanning?()
+      return @scanning
     end
 =begin rdoc
 Lists all devices available to the server
@@ -128,8 +116,86 @@ Returns:
 * a number between 2 and 4294967295
 =end
     def generateID()
-      return rand(2..4294967295)
+      @messageID+=1
+      return @messageID
     end
+    def currentDevices()
+      return @currentDevices
+    end
+    def deviceSusbscribe(id,&code)
+      #TODO: Add Code here to allow a class like Buttplug::Device to subscribe to events, annnnd realize that the device has disconnected when that does happen (like the hush has a tendeancy to do ... )
+    end
+    protected 
+    def startEventMachine()
+      @eventMachine=Thread.new{EM.run{
+        eventQueue=@eventQueue
+        messageWatch={}
+        logLevel=@logLevel
+        scanning=@scanning
+        currentDevices=@currentDevices
+        ws = Faye::WebSocket::Client.new(@location)
+        tickLoop=EM.tick_loop do #Should improve response times~
+          eventQueue.pop{|msg|
+            ws.send msg[1]
+            messageWatch[msg[0]]=msg
+            p [Time.now, :message_send, msg[1]] 
+          }
+        end
+        ws.on :open do |event|
+          p [Time.now, :open]
+          ws.send "[{\"RequestServerInfo\": {\"Id\": 1, \"ClientName\": \"#{clientName}\", \"MessageVersion\": 1}}]"
+          #TODO: Add MaxPingTime Code
+        end
+        ws.on :message do |event|
+          #Ok, first of all let's grab 
+          message=JSON::parse(event.data).each{|event|
+            message.each{|key,value|
+              #We don't really care about the key just yet ... We are going to just care about finding our ID
+              if(messageWatch.keys.include?(value["Id"]))
+                messageWatch[value["Id"]]<<{key => value}#And now we care about our key!
+                puts messageWatch[value["Id"]].object_id
+                messageWatch.delete(value["Id"])
+                p [Time.now, :message_recieved, [{key => value}]]
+                next
+              #If we are currently scanning, we should Probably check and see if we recieved a ScanningFinished message
+              elsif(scanning&&key=="ScanningFinished")
+                p [Time.now,:ScanningFinished]
+                scanning=false
+              #If we are logging, we should probably Check and see if this is a log ... 
+              elsif(logLevel>Buttplug::LogLevel::Off&&key=="Log")
+                p [Time.now,:ServerLog,value]
+              #and last but not least if we spot our server info we should probably log it ...
+              elsif(key=="DeviceAdded")
+                #Oh? Sweet let's go ahead and add it's information to our array!
+                currentDevices.push(
+                  {"DeviceName" => value["DeviceName"], "DeviceIndex" => value["DeviceIndex"], "DeviceMessages" => value["DeviceMessages"]})
+              elsif(key=="DeviceRemoved")
+                #well darn, and to just have compatability with the current js version of buttplug.io we are gonna do this a bit diffrently than I'd like ... we are totally not doing this because I'm feeling lazy and want to push out this itteration, no sir
+                currentDevices.reject!{|device|
+                  device["Id"]==value["Id"]
+                }
+              elsif(key=="ServerInfo")
+                p [Time.now, :server_info, value]
+              end
+            }
+          }
+        end
+        ws.on :close do |event|
+          p [Time.now, :close, event.code, event.reason]
+          ws = nil
+          #TODO: Add Nil checks for Sends, and Nil out the ping when closed
+        end
+        EM.add_periodic_timer(0.5){
+          ws.send "[{\"Ping\": {\"Id\": #{generateID()}}}]"
+        }
+        #TODO: Add Error code https://metafetish.github.io/buttplug/status.html#error
+          #So, I should probably add some basic error handling to most of the code then ... 
+        #TODO: Add Log code https://metafetish.github.io/buttplug/status.html#requestlog 
+          #Done, I think ... please correct me if I'm wrong
+      }}
+    end
+    #TODO: Add Method to disconnect from current Server
+    #TODO: Add Method for reconnecting to a Server
   end
 =begin rdoc
 This class creates a Wrapper for your various devices you fetched from listDevices for your controlling pleasure!

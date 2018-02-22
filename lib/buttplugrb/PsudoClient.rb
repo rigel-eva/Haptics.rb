@@ -4,12 +4,29 @@ module Buttplug
 This is a class to emulate a connection to a buttplug server for testing purposes, primarily to check to see if things are echoing across right ... It will not generate a proper connection to the server specified ...
 =end
     class PsudoClient < Buttplug::Client
-        def initialize(serverLocation,logLocation, logLevel)
+        def initialize(serverLocation,logLocation,clientName="buttplugrb",logLevel=Logger::DEBUG)
           @log=Logger.new(logLocation)
-          @location=serverLocation
-          @eventQueue=EM::Queue.new
-          @log.level=Logger::DEBUG
+          @log.level=logLevel
           @devices=[]
+          super(serverLocation,clientName)
+        end
+        def addVirtualDevice(deviceInfo)
+          @devices<<deviceInfo
+        end
+        def addVirtualGenericVibrator()
+          id=generateID()
+          addVirtualDevice({"DeviceName"=> "TestDevice #{id}","DeviceIndex"=>id-1,"DeviceMessages"=>{"SingleMotorVibrateCmd"=>{},"VibrateCmd"=>{"FeatureCount"=>2},"StopDeviceCmd"=>{}}})
+        end
+        def addVirtualGenericStroker()
+          id=generateID()
+          addVirtualDevice({"DeviceName"=> "TestDevice #{id}","DeviceIndex"=>id-1,"DeviceMessages"=>{"LinearCmd"=>{"FeatureCount"=>1},"StopDeviceCmd"=>{}}})
+        end
+        def addVirtualGenericRotator()
+          id=generateID()
+          addVirtualDevice({"DeviceName"=> "TestDevice #{id}","DeviceIndex"=>id-1,"DeviceMessages"=>{"RotateCmd"=>{"FeatureCount"=>1},"StopDeviceCmd"=>{}}})
+        end
+        protected
+        def startEventMachine()
           @eventMachine=Thread.new{EM.run{
             log=@log
             eventQueue=@eventQueue
@@ -30,20 +47,5 @@ This is a class to emulate a connection to a buttplug server for testing purpose
             end
           }}
         end
-        def addVirtualDevice(deviceInfo)
-          @devices<<deviceInfo
-        end
-        def addVirtualGenericVibrator()
-          id=generateID()
-          addVirtualDevice({"DeviceName"=> "TestDevice #{id}","DeviceIndex"=>id-1,"DeviceMessages"=>{"SingleMotorVibrateCmd"=>{},"VibrateCmd"=>{"FeatureCount"=>2},"StopDeviceCmd"=>{}}})
-        end
-        def addVirtualGenericStroker()
-          id=generateID()
-          addVirtualDevice({"DeviceName"=> "TestDevice #{id}","DeviceIndex"=>id-1,"DeviceMessages"=>{"LinearCmd"=>{"FeatureCount"=>1},"StopDeviceCmd"=>{}}})
-        end
-        def addVirtualGenericRotator()
-          id=generateID()
-          addVirtualDevice({"DeviceName"=> "TestDevice #{id}","DeviceIndex"=>id-1,"DeviceMessages"=>{"RotateCmd"=>{"FeatureCount"=>1},"StopDeviceCmd"=>{}}})
-        end
-      end
+    end
 end
