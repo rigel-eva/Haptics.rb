@@ -2,7 +2,7 @@ load 'lib/buttplugrb/VERSION'
 Gem::Specification.new do |s|
     s.name  ="buttplugrb"
     s.version=Buttplug::VERSION
-    s.date="2018-02-14"
+    s.date=Time.now.to_s.split(" ")[0]
     s.summary="Buttplug Client Library"
     s.add_runtime_dependency "faye-websocket", [">=0.10.7"]
     s.add_runtime_dependency "eventmachine",[">=1.2.5"]
