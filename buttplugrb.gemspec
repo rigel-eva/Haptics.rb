@@ -13,7 +13,7 @@ Gem::Specification.new do |s|
     s.files = ["CODE_OF_CONDUCT.md",
                 "README.md",
                 "Rakefile",
-                "lib/buttplugrb.rb",
+                "lib/buttplugrb.rb", 
                 "lib/buttplugrb/VERSION",
                 "examples/Vibrate.rb"]
     s.homepage = "http://rubygems.org/gems/#{s.name}"
