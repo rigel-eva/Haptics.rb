@@ -21,3 +21,9 @@ task :buildDevandRun do
     Rake::Task[:buildDevVersion].invoke
     Rake::Task[:console].invoke
 end
+task :buildReleaseVersionAndPush do
+    sh %{gem uninstall buttplugrb}
+    sh %{gem build buttplugrb.gemspec}
+    sh %{gem push buttplugrb*.gem}
+    sh %{rm buttplugrb*.gem}
+end
