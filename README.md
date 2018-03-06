@@ -1,6 +1,6 @@
-# Buttplugrb - Shove Ruby up your ass!
+# Haptics.rb - A haptic control client
 
-Welp ... You have wandered into probably one of the silliest things I set up ... This is a gem to make your ruby app act as a client for a buttplug.io server ... 
+This gem provides a way to control haptic devices connected to a server remotely.
 
 ## Installation
 
